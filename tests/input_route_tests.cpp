@@ -83,5 +83,17 @@ int main() {
  assert(d2->keys.size()==4 && !d2->keys.back().second);
  assert(d2->buttons.back()==std::make_pair((std::uint8_t)0,false));
  assert(!r.connected());
- std::puts("QEMU input mapping, held-key release, fractional wheel and INT_MIN PASS");
+ // Moonlight sends macOS Command as Windows virtual keys 0x5B/0x5C.
+ auto shortcuts=std::make_shared<ProbeDisplay>();r.attach(shortcuts);
+ assert(r.key(0x5B,true)); // left Command
+ assert(r.key(0x20,true) && r.key(0x20,false)); // Command-Space
+ assert(r.key(0x5B,false));
+ const std::vector<std::pair<std::uint32_t,bool>> expected_command_space={{0xDBU,true},{57U,true},{57U,false},{0xDBU,false}};
+ assert(shortcuts->keys==expected_command_space);
+ assert(r.key(0x5C,true)); // right Command
+ assert(shortcuts->keys.back()==std::make_pair(0xDCU,true));
+ r.detach(shortcuts.get()); // disconnect must release a held right Command
+ assert(shortcuts->keys.back()==std::make_pair(0xDCU,false));
+ assert(!r.connected());
+ std::puts("QEMU input mapping, both Command keys, disconnect release, fractional wheel and INT_MIN PASS");
 }
