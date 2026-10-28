@@ -15,6 +15,7 @@ int main() {
    reims_stream::GioQemuDisplay source(addr,dest?dest:"",true);
    reims_stream::CaptureFeed feed(source);
    feed.start();
+   if(i==0){std::this_thread::sleep_for(6500ms);if(!source.audio_stats().connected)throw std::runtime_error("audio died during silence");}
    if(i%3==0){
       if(!feed.wait_geometry(3s))throw std::runtime_error("reconnect delivered no frame");
    } else if(i%3==1)std::this_thread::sleep_for(1ms);

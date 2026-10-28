@@ -1,0 +1,18 @@
+Internal ctest changing into directory: /home/server/Documents/Projects/Sequoia-Reims-StreamBridge/build-qsm
+Test project /home/server/Documents/Projects/Sequoia-Reims-StreamBridge/build-qsm
+    Start 22: qmdp_lossless_ui_tests
+1/6 Test #22: qmdp_lossless_ui_tests ...........   Passed    0.03 sec
+    Start 23: qmdp_core_tests
+2/6 Test #23: qmdp_core_tests ..................   Passed    0.14 sec
+    Start 24: qmdp_dbus_integration_tests
+3/6 Test #24: qmdp_dbus_integration_tests ......   Passed    0.74 sec
+    Start 25: qmdp_no_gpu_ffmpeg_selftest
+4/6 Test #25: qmdp_no_gpu_ffmpeg_selftest ......   Passed    0.92 sec
+    Start 26: qmdp_message_bus_map_e2e
+5/6 Test #26: qmdp_message_bus_map_e2e .........   Passed    1.30 sec
+    Start 27: qmdp_message_bus_inline_e2e
+6/6 Test #27: qmdp_message_bus_inline_e2e ......   Passed    1.30 sec
+
+100% tests passed, 0 tests failed out of 6
+
+Total Test time (real) =   4.45 sec

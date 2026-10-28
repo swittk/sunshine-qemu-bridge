@@ -1,0 +1,5 @@
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends pulseaudio && rm -rf /var/lib/apt/lists/*
+RUN useradd -u 1000 -m server
+USER server
+ENTRYPOINT ["pulseaudio","--daemonize=no","--use-pid-file=no","--exit-idle-time=-1","-n","-L","module-null-sink sink_name=reims_qemu","-L","module-native-protocol-unix socket=/pulse/native"]

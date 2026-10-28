@@ -1,0 +1,4 @@
+services:
+  sunshine:
+    stdin_open: true
+    command: [--qmp, /run/streambridge/qmp.sock, --socket, /config/broker.sock, --exec, /usr/local/bin/sunshine, /config/sunshine.conf, '-0']

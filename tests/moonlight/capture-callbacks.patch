@@ -1,0 +1,39 @@
+diff --git a/src/FakeCallbacks.c b/src/FakeCallbacks.c
+index 29fdf18..ea343e7 100644
+--- a/src/FakeCallbacks.c
++++ b/src/FakeCallbacks.c
+@@ -1,10 +1,16 @@
++#include <stdlib.h>
++#include <stdio.h>
+ #include "Limelight-internal.h"
++#include "ReimsEvidence.h"
+ 
+-static int fakeDrSetup(int videoFormat, int width, int height, int redrawRate, void* context, int drFlags) { return 0; }
++static int fakeDrSetup(int videoFormat, int width, int height, int redrawRate, void* context, int drFlags) { proof_video_init(videoFormat,width,height,redrawRate); return 0; }
+ static void fakeDrStart(void) {}
+ static void fakeDrStop(void) {}
+-static void fakeDrCleanup(void) {}
+-static int fakeDrSubmitDecodeUnit(PDECODE_UNIT decodeUnit) { return DR_OK; }
++static void fakeDrCleanup(void) { proof_video_close(); }
++static int fakeDrSubmitDecodeUnit(PDECODE_UNIT decodeUnit) { proof_video_unit(decodeUnit); static unsigned n=0; if (++n%60==0) fprintf(stderr,"MOONLIGHT_VIDEO_UNITS=%u\n",n);
++ if(getenv("REIMS_TEST_INPUT")&&n==60){LiSendKeyboardEvent(0x41,KEY_ACTION_DOWN,0);LiSendMouseMoveEvent(7,-3);}
++ if(getenv("REIMS_TEST_INPUT")&&n==61){LiSendKeyboardEvent(0x41,KEY_ACTION_UP,0);LiSendMouseButtonEvent(BUTTON_ACTION_PRESS,BUTTON_LEFT);LiSendMouseButtonEvent(BUTTON_ACTION_RELEASE,BUTTON_LEFT);}
++ return DR_OK; }
+ 
+ static DECODER_RENDERER_CALLBACKS fakeDrCallbacks = {
+     .setup = fakeDrSetup,
+@@ -14,11 +20,11 @@ static DECODER_RENDERER_CALLBACKS fakeDrCallbacks = {
+     .submitDecodeUnit = fakeDrSubmitDecodeUnit,
+ };
+ 
+-static int fakeArInit(int audioConfiguration, POPUS_MULTISTREAM_CONFIGURATION opusConfig, void* context, int arFlags) { return 0; }
++static int fakeArInit(int audioConfiguration, POPUS_MULTISTREAM_CONFIGURATION opusConfig, void* context, int arFlags) { proof_audio_init(opusConfig); return 0; }
+ static void fakeArStart(void) {}
+ static void fakeArStop(void) {}
+-static void fakeArCleanup(void) {}
+-static void fakeArDecodeAndPlaySample(char* sampleData, int sampleLength) {}
++static void fakeArCleanup(void) { proof_audio_close(); }
++static void fakeArDecodeAndPlaySample(char* sampleData, int sampleLength) { proof_audio_packet(sampleData,sampleLength); static unsigned n=0; if (++n%100==0) fprintf(stderr,"MOONLIGHT_AUDIO_PACKETS=%u\n",n); }
+ 
+ AUDIO_RENDERER_CALLBACKS fakeArCallbacks = {
+     .init = fakeArInit,

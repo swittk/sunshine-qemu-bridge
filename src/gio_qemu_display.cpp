@@ -129,6 +129,7 @@ void GioQemuDisplay::start(qmdp::QemuDisplayCallbacks callbacks) {
             G_IO_STREAM(stream),nullptr,
             G_DBUS_CONNECTION_FLAGS_AUTHENTICATION_CLIENT,
             nullptr,nullptr,&err);
+        if(main_)g_socket_set_timeout(g_socket_connection_get_socket(stream),0);
         g_object_unref(stream);
     }else{
         main_=g_dbus_connection_new_for_address_sync(
@@ -314,6 +315,7 @@ void GioQemuDisplay::serve_peer(int fd) {
         G_IO_STREAM(raw),nullptr,static_cast<GDBusConnectionFlags>(
             G_DBUS_CONNECTION_FLAGS_AUTHENTICATION_CLIENT|G_DBUS_CONNECTION_FLAGS_DELAY_MESSAGE_PROCESSING),
         nullptr,nullptr,&err);
+    if(peer_)g_socket_set_timeout(g_socket_connection_get_socket(raw),0);
     g_object_unref(raw);
     if(!peer_) {
        report(gerror(err,"QEMU GIO authentication failed"));

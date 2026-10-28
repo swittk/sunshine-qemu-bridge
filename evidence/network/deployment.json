@@ -1,0 +1,11 @@
+{
+  "tag": "reims-sunshine-av-verified:20261028",
+  "image_id": "sha256:730ce43598ab194975e042b44b061bef40edb8cfa95587776bacc27209c44cb8",
+  "size_bytes": 267782088,
+  "binaries": {
+    "sunshine": "e1112796cee391cd78dde28e1f28c2c81cc10e75ebbe075fd88ab63064985fc7",
+    "reims_audio_forwarder": "63b754ddcc0fb2455afd5b2db3d783779aaefc7fe809e82351292870165439ac"
+  },
+  "acceptance": "paired-av.json and keyboard-verified.json",
+  "topology": "private Unix D-Bus bus + persistent audio forwarder + isolated PulseAudio"
+}

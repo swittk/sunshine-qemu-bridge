@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libavahi-client3 libavahi-common3 && \
     rm -rf /var/lib/apt/lists/*
 COPY dist/sunshine /usr/local/bin/sunshine
+COPY dist/reims_audio_forwarder /usr/local/bin/reims_audio_forwarder
 COPY dist/assets/ /usr/local/assets/
 COPY scripts/qmp_attach.py scripts/qmp_broker.py /opt/reims-stream/
 WORKDIR /opt/reims-stream

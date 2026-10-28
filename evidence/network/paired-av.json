@@ -1,0 +1,30 @@
+{
+  "verified_at": "2026-10-28T10:34:11.351107+00:00",
+  "video": {
+    "codec_name": "h264",
+    "width": 720,
+    "height": 400,
+    "nb_read_frames": "628"
+  },
+  "audio": {
+    "moonlight_opus_packets": 3384,
+    "decoded_audio_frames": 812160,
+    "sample_rate": 48000,
+    "channels": 2,
+    "tone_peak_hz": 441.0,
+    "rms": 0.734329104423523,
+    "peak": 1.1346995830535889,
+    "non_silent_samples": 796602,
+    "end_to_end_audio_verified": true
+  },
+  "first_frame_std": 30.35669288453032,
+  "raw_sha256": {
+    "received.h264": "aaaf34b09b1916f8188f1692bf25785832483a831aeaf6bbe7da4d3948dbf9f7",
+    "received.opuspackets": "594484d8e3cc153f2b663169942423e74c0fb8529d895a38aa8be2d66ef771bc"
+  },
+  "sunshine_image": "sha256:730ce43598ab194975e042b44b061bef40edb8cfa95587776bacc27209c44cb8",
+  "paired_network_av_verified": true,
+  "headless_receiver": true,
+  "macos_guest_tested": false,
+  "display_latency_tested": false
+}

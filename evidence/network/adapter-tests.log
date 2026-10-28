@@ -1,0 +1,14 @@
+Internal ctest changing into directory: /home/server/Documents/Projects/Sequoia-Reims-StreamBridge/build-bridge
+Test project /home/server/Documents/Projects/Sequoia-Reims-StreamBridge/build-bridge
+    Start 1: reims_capture_tests
+1/4 Test #1: reims_capture_tests ..............   Passed    0.01 sec
+    Start 2: reims_input_tests
+2/4 Test #2: reims_input_tests ................   Passed    0.01 sec
+    Start 3: reims_audio_queue_tests
+3/4 Test #3: reims_audio_queue_tests ..........   Passed    0.01 sec
+    Start 4: reims_cursor_blend_tests
+4/4 Test #4: reims_cursor_blend_tests .........   Passed    0.01 sec
+
+100% tests passed, 0 tests failed out of 4
+
+Total Test time (real) =   0.03 sec

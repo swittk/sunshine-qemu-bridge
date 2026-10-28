@@ -1,8 +1,8 @@
 # QEMU Display1 → Sunshine adapter
 
-Experimental, isolated HPSERVER project. **Real QEMU video/PCM and GPU encode/decode are validated; paired Moonlight playback and live macOS integration are not.**
+Experimental, isolated HPSERVER project. **Paired Moonlight network video, decoded test-tone audio and keyboard delivery to a disposable guest are validated. Live macOS and physical-display latency are not yet validated here.**
 
-## Current evidence — 2026-10-28
+## Earlier local checks — 2026-10-28
 
 The tests use a disposable 128 MiB SeaBIOS QEMU VM, not the production macOS disk.
 
@@ -33,11 +33,11 @@ Video remains CPU-backed. This does not change ReiMS shaders, guest Metal driver
 
 `GioQemuAudio` receives and validates actual QEMU PCM, including signed/unsigned integer and floating formats. PCM reception and the generated tone are verified. Optional `PulseAudioBridge` forwards it to a **separately supplied private** PulseAudio/PipeWire sink for stock Sunshine capture.
 
-**Audible Moonlight playback and A/V synchronization have not been verified.** The runtime fixture defaults to audio off. Do not enable it without providing a sink and verifying both directions. The synchronous PulseAudio writer still needs shutdown/failure testing against an unresponsive sound server. Microphone return and surround are not acceptance-tested.
+**Decoded Moonlight network audio is verified; physical-speaker playback and A/V synchronization have not been measured.** The runtime fixture defaults to audio off. Do not enable it without providing a sink and verifying both directions. The synchronous PulseAudio writer still needs shutdown/failure testing against an unresponsive sound server. Microphone return and surround are not acceptance-tested.
 
 ## Known limitations / remaining gates
 
-1. **Pairing and playback:** the headless Moonlight client reached pairing, but automated approval was blocked by execution controls. No authentication bypass was added. Approve the test client through Sunshine's normal management UI before asserting a working network stream.
+1. **Pairing and playback:** standard terminal-PIN pairing succeeded. Received H.264 and Opus packets were decoded and validated. Remaining: native-client display/speaker observation and measured A/V synchronization; no authentication bypass was added.
 2. **Live macOS:** untouched by this project; another coordinator owns its runtime. No Compose override or guest restart has been applied. Guest integration needs a controlled, reversible restart after renderer acceptance.
 3. **Input:** keyboard, mouse buttons, vertical wheel and cursor composition are implemented. Held keys/buttons are released on capture detach. QEMU's absolute USB tablet has a bounded fallback for relative desktop movement; this is not validated FPS-game relative-mouse capture. Gamepads, horizontal scrolling and Unicode paste are not implemented.
 4. **Reliability/performance:** resizing triggers capture reinitialization; reconnect tests pass, but sustained Moonlight reconnects, audio drift, long-duration high-motion streaming and client latency remain unmeasured.
@@ -48,7 +48,7 @@ Video remains CPU-backed. This does not change ReiMS shaders, guest Metal driver
 Run from `/home/server/Documents/Projects/Sequoia-Reims-StreamBridge`:
 
 ```sh
-python3 bridge/scripts/build_current.py --configure --target sunshine reims_gio_smoke reims_av_probe reims_gio_lifecycle
+python3 bridge/scripts/build_current.py --configure --target sunshine reims_gio_smoke reims_av_probe reims_gio_lifecycle reims_audio_forwarder
 cmake -S bridge -B build-bridge -DCMAKE_BUILD_TYPE=Release
 cmake --build build-bridge --parallel 5
 ctest --test-dir build-bridge --output-on-failure
@@ -75,11 +75,11 @@ docker compose -f bridge/compose.fixture.yml config
 docker compose -f bridge/compose.fixture.yml up -d
 ```
 
-This starts a new diskless QEMU fixture and Sunshine sidecar, **not macOS**. Ports bind to host loopback only. Sunshine's first-run setup and pairing remain normal interactive operations. Existing configuration is never overwritten by the preparation script. The file was staged and schema-checked, not automatically applied.
+This starts a new diskless QEMU fixture and Sunshine sidecar, **not macOS**. Ports bind to host loopback only. Sunshine's first-run setup and pairing remain normal interactive operations. Existing configuration is never overwritten by the preparation script. The video-only fixture was started and paired during testing; the newer AV fixture below is the accepted full media topology.
 
 ## Future live macOS attachment
 
-Retain the exact working image, disks, guest kexts, CPU/RAM settings and VNC endpoint. Add a private QMP Unix socket and `-display dbus,p2p=yes` during a coordinated restart. Mount that socket directory into the Sunshine service and share only the VM's PID namespace. Match its UID. Enable a D-Bus audiodev and virtual USB sound card separately when testing audio. Keep a configuration rollback and do not combine this change with renderer A/B tests.
+Retain the exact working image, disks, guest kexts, CPU/RAM settings and VNC endpoint. For the verified full-AV path, expose QEMU Display1 on a private Unix message bus during a coordinated restart; keep its private QMP socket for lifecycle operations. The p2p display variant is independently verified for video only. Mount that socket directory into the Sunshine service and share only the VM's PID namespace. Match its UID. Enable a D-Bus audiodev and virtual USB sound card separately when testing audio. Keep a configuration rollback and do not combine this change with renderer A/B tests.
 
 ## Provenance and licensing
 
@@ -87,3 +87,11 @@ Retain the exact working image, disks, guest kexts, CPU/RAM settings and VNC end
 - QSM Direct snapshot: `eb4b652cab71874c264204e8e4463496ed5d7786`.
 - Both retained source trees provide GPLv3 license texts. Preserve their notices and source availability when distributing derivatives.
 - Runtime images contain no generated pairing/admin credentials; mutable state is supplied through `/config`.
+
+## Paired network acceptance — 2026-10-28 17:36 ICT
+The latest complete session delivered 628 decodable H.264 frames at 720×400 and 3,384 Opus packets (812,160 stereo PCM frames at 48 kHz). The intended 440 Hz fixture tone measured 441 Hz after the network audio path. `evidence/network/paired-av.json` contains media hashes and the exact image ID. This was a headless client, not an on-screen latency measurement.
+A separate repeated Moonlight input test advanced the SeaBIOS keyboard-buffer tail from 0x26 to 0x28 and inserted ASCII `a` / scan code 0x1e. `scripts/verify_network_input.py` checks the guest memory rather than relying on transport logs; `evidence/network/keyboard-verified.json` stores the result.
+
+## Tested full-AV topology
+Use `compose.audio-fixture.yml`: a private Unix D-Bus message bus in QEMU, one persistent `reims_audio_forwarder`, an isolated PulseAudio null sink, and Sunshine with `REIMS_ENABLE_AUDIO=0` (video capture does not own audio). `QEMU_DBUS_DESTINATION=org.qemu`; the services share QEMU's PID namespace and UID. The original QMP/p2p route remains a video-only option, not the full-AV acceptance path.
+Run `decode_moonlight_audio.py` then `save_network_evidence.py` against captures from the paired, instrumented Moonlight client. `verify_network_input.py` requires the named, diskless fixture and the prepared bounded input-test client. `ReimsEvidence.h` in that test-only client writes received packets for offline decoding; it does not alter Sunshine's protocol or pairing policy.

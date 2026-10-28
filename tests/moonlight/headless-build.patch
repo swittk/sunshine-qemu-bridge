@@ -1,0 +1,21 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 2be10fd..1e0f6b5 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -28,6 +28,7 @@ option(ENABLE_FFMPEG "Compile FFMPEG support" ON)
+ option(ENABLE_X11 "Compile X11 support (requires ENABLE_FFMPEG)" ON)
+ option(ENABLE_CEC "Compile CEC support" ON)
+ option(ENABLE_PULSE "Compile PulseAudio support" ON)
++option(ENABLE_FAKE "Allow fake no-display client for integration testing" OFF)
+ 
+ pkg_check_modules(EVDEV REQUIRED libevdev)
+ pkg_check_modules(UDEV REQUIRED libudev)
+@@ -216,7 +217,7 @@ if (AMLOGIC_FOUND OR BROADCOM-OMX_FOUND OR MMAL_FOUND OR FREESCALE_FOUND OR ROCK
+   list(APPEND MOONLIGHT_OPTIONS EMBEDDED)
+ endif()
+ 
+-if(NOT AMLOGIC_FOUND AND NOT BROADCOM-OMX_FOUND AND NOT MMAL_FOUND AND NOT FREESCALE_FOUND AND NOT ROCKCHIP_FOUND AND NOT SOFTWARE_FOUND)
++if(NOT AMLOGIC_FOUND AND NOT BROADCOM-OMX_FOUND AND NOT MMAL_FOUND AND NOT FREESCALE_FOUND AND NOT ROCKCHIP_FOUND AND NOT SOFTWARE_FOUND AND NOT ENABLE_FAKE)
+   message(FATAL_ERROR "No video output available")
+ endif()
+ 

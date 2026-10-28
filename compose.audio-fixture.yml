@@ -1,0 +1,56 @@
+name: reims-streambridge-audio
+services:
+  sunshine:
+    image: reims-sunshine-sidecar:local
+    container_name: reims-sunshine-audio
+    depends_on: [pulse]
+    pid: container:reims-av-fixture
+    user: 1000:1000
+    network_mode: reims-streambridge-fixture_default
+    devices:
+    - nvidia.com/gpu=GPU-020906b4-0904-3471-e4ee-e41ec2350be3
+    environment:
+      HOME: /config
+      REIMS_ENABLE_AUDIO: '0'
+      PULSE_SERVER: unix:/pulse/native
+      REIMS_AUDIO_SINK: reims_qemu
+      NVIDIA_DRIVER_CAPABILITIES: video,compute,utility
+      QEMU_DBUS_ADDRESS: unix:path=/run/streambridge/displaybus.sock
+      QEMU_DBUS_DESTINATION: org.qemu
+    volumes:
+    - ./run/av-fixture:/run/streambridge
+    - ./run/compose-config:/config
+    - ./run/pulse:/pulse
+    command:
+    - /config/sunshine.conf
+    - stream_audio=enabled
+    - audio_sink=reims_qemu
+    entrypoint:
+    - /usr/local/bin/sunshine
+  audio:
+    image: reims-sunshine-sidecar:local
+    container_name: reims-audio-forwarder
+    depends_on: [pulse]
+    pid: container:reims-av-fixture
+    user: 1000:1000
+    network_mode: none
+    environment:
+      HOME: /config
+      PULSE_SERVER: unix:/pulse/native
+      REIMS_AUDIO_SINK: reims_qemu
+      QEMU_DBUS_ADDRESS: unix:path=/run/streambridge/displaybus.sock
+      QEMU_DBUS_DESTINATION: org.qemu
+    volumes:
+    - ./run/av-fixture:/run/streambridge
+    - ./run/compose-config:/config
+    - ./run/pulse:/pulse
+    command: []
+    entrypoint:
+    - /usr/local/bin/reims_audio_forwarder
+  pulse:
+    image: reims-pulse-fixture:local
+    container_name: reims-audio-pulse
+    user: 1000:1000
+    network_mode: none
+    volumes: ["./run/pulse:/pulse"]
+    restart: "no"

@@ -1,0 +1,12 @@
+{
+  "guest": "diskless SeaBIOS fixture",
+  "before_bda_hex": "1e002600611e611e611e611e000000000000000000000000000000000000000000000000",
+  "after_bda_hex": "1e002800611e611e611e611e611e00000000000000000000000000000000000000000000",
+  "tail_before": 38,
+  "tail_after": 40,
+  "inserted_character": "a",
+  "inserted_scan_code": 30,
+  "network_to_guest_keyboard_verified": true,
+  "client_exit": 124,
+  "bounded_test_seconds": 12
+}

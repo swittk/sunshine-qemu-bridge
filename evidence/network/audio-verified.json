@@ -1,0 +1,11 @@
+{
+  "moonlight_opus_packets": 3384,
+  "decoded_audio_frames": 812160,
+  "sample_rate": 48000,
+  "channels": 2,
+  "tone_peak_hz": 441.0,
+  "rms": 0.734329104423523,
+  "peak": 1.1346995830535889,
+  "non_silent_samples": 796602,
+  "end_to_end_audio_verified": true
+}

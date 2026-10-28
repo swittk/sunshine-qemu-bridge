@@ -1,3 +1,4 @@
+#include <cstdio>
 #include "pulse_audio_bridge.hpp"
 #include <pulse/simple.h>
 #include <pulse/error.h>
@@ -47,7 +48,7 @@ void PulseAudioBridge::worker() noexcept {
     pa_buffer_attr attr{};
     attr.maxlength=(std::uint32_t)-1;
     attr.tlength=std::max<std::uint32_t>(4096U,chunk->sample_rate*chunk->channels*sizeof(float)/25U); // ~40ms
-    attr.prebuf=0;
+    attr.prebuf=chunk->sample_rate*chunk->channels*sizeof(float)/50U; // Rebuffer 20ms after silence/underrun.
     attr.minreq=(std::uint32_t)-1;
     attr.fragsize=(std::uint32_t)-1;
     const char *sink_name=std::getenv("REIMS_AUDIO_SINK");
@@ -56,7 +57,7 @@ void PulseAudioBridge::worker() noexcept {
     sink.reset(pa_simple_new(nullptr,"ReiMS QEMU Bridge",PA_STREAM_PLAYBACK,
       sink_name,"Guest audio",&spec,nullptr,&attr,&error));
     if(!sink) {
-      ++connection_errors_;
+      ++connection_errors_; fprintf(stderr,"REIMS_PULSE_OPEN_ERROR=%s\n",pa_strerror(error));
       std::this_thread::sleep_for(std::chrono::milliseconds(250));
       continue;
     }

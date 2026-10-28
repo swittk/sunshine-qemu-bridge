@@ -9,6 +9,7 @@ r=Path(__file__).resolve().parents[2]
 dist=r/'bridge/dist'
 (dist/'assets').mkdir(parents=True,exist_ok=True)
 shutil.copy2(r/'build-sunshine/sunshine',dist/'sunshine')
+shutil.copy2(r/'build-sunshine/reims_audio_forwarder',dist/'reims_audio_forwarder')
 for entry in (r/'build-sunshine/assets').iterdir():
     if entry.name=='shaders':continue
     target=dist/'assets'/entry.name

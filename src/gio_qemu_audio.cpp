@@ -1,3 +1,4 @@
+#include <cstdio>
 #include "gio_qemu_audio.hpp"
 #include <algorithm>
 #include <bit>
@@ -65,7 +66,8 @@ void GioQemuAudio::method_call(GDBusConnection*,const gchar*,const gchar*,
  auto* instance=static_cast<GioQemuAudio*>(opaque);
  instance->handle(name,data,invocation);
 }
-void GioQemuAudio::closed(GDBusConnection*,gboolean,GError*,gpointer opaque) {
+void GioQemuAudio::closed(GDBusConnection*,gboolean,GError* error,gpointer opaque) {
+ std::fprintf(stderr,"AUDIO_PEER_CLOSED: %s\n",error?error->message:"clean");
  auto* self=static_cast<GioQemuAudio*>(opaque);
  self->connected_=false;
  if(self->loop_)g_main_loop_quit(self->loop_);
@@ -116,7 +118,7 @@ void GioQemuAudio::handle(const char* name,GVariant* data,GDBusMethodInvocation*
     }
     g_dbus_method_invocation_return_value(invocation,g_variant_new("()"));
  } catch(const std::exception& ex) {
-   ++errors_;
+   ++errors_;fprintf(stderr,"REIMS_AUDIO_ERROR=%s\n",ex.what());
    g_dbus_method_invocation_return_error(invocation,G_DBUS_ERROR,G_DBUS_ERROR_FAILED,"%s",ex.what());
  }
 }
@@ -181,6 +183,7 @@ void GioQemuAudio::worker_loop(int fd) {
    peer_=g_dbus_connection_new_sync(G_IO_STREAM(stream),nullptr,
         static_cast<GDBusConnectionFlags>(G_DBUS_CONNECTION_FLAGS_AUTHENTICATION_CLIENT|
            G_DBUS_CONNECTION_FLAGS_DELAY_MESSAGE_PROCESSING),nullptr,nullptr,&err);
+   if(peer_)g_socket_set_timeout(g_socket_connection_get_socket(stream),0); // Only authentication has an idle deadline.
    g_object_unref(stream);
  }
  if(!peer_){++errors_;if(err)g_error_free(err);goto done;}
