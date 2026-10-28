@@ -1,57 +1,89 @@
-# ReiMS/QEMU → Sunshine capture adapter (experimental, parallel checkout)
+# QEMU Display1 → Sunshine adapter
 
-**Status (2026-10-28):** Isolated **video-only source prototype**. Not a deployed Moonlight stream or production Sunshine build. Do not point at the live ReiMS VM without coordinator approval. Contains no host/guest runtime modifications.
+Experimental, isolated HPSERVER project. **Real QEMU video/PCM and GPU encode/decode are validated; paired Moonlight playback and live macOS integration are not.**
 
-## Existing work reused
+## Current evidence — 2026-10-28
 
-- [LizardByte/Sunshine](https://github.com/LizardByte/Sunshine) capture interface `platf::display_t`, platform Linux backend registration, NVENC encoder.
-- [rdmitry0911/qsm-rd](https://github.com/rdmitry0911/qsm-rd) QEMU Display1 D-Bus receiver, shared-memory scanout, updated rectangle handling, DMA-BUF optional support, audio and input methods, replay/fake-QEMU tests. This is prior art for direct **WebRTC** streaming, not an existing Moonlight/Sunshine integration.
-- QSM QEMU-side tests and fake-QEMU D-Bus integration tests passed on HPSERVER; bridge tests validate BGRA conversion, frame stride, stale-frame dropping, resize, fatal errors, and shutdown.
+The tests use a disposable 128 MiB SeaBIOS QEMU VM, not the production macOS disk.
 
-Both upstream source checkouts are pinned by their own git revisions; do not copy QSM's GPL code into a different-license project without preserving licensing/notices.
+- Full Sunshine fork builds with the QEMU capture backend, CUDA/NVENC, input routing, cursor compositing, and optional PCM forwarding.
+- Real QEMU capture: 192 frames at 720×400; 440,640 individual floating-point audio samples, stereo 48 kHz; zero connection/audio errors.
+- The fixture's PIT speaker produces a requested 440 Hz tone. The captured PCM's measured dominant frequency is **440.0 Hz**. This is actual audio data, not just a successful listener registration.
+- Captured video was converted to NV12, encoded on HPSERVER's healthy RTX 2080 Ti using `h264_nvenc`, decoded, and compared: all 192 frames decoded; first-frame mean absolute RGB difference **0.209 levels on a 0–255 scale**. This is a local capture/codec round-trip, **not** a Moonlight network session.
+- Twelve real QEMU connection/shutdown cycles passed; each shutdown took 43–51 ms in the recorded run. This exercises immediate stop and stop after frames arrive.
+- Four adapter test executables pass (frame handling, input routing, bounded audio queue, cursor blending). Six upstream QSM receiver/core tests previously passed.
+- VNC is genuinely still listening alongside D-Bus: the same fixture returns `RFB 003.008` on port 5909.
+- Sunshine startup successfully detects H.264/HEVC NVENC and serves its GameStream discovery endpoint and HTTPS management interface. AV1/HDR are not supported by this implementation/hardware path.
 
-## Source layout
+Machine-readable evidence and logs are retained under `evidence/` and larger raw fixture captures under ignored `run/av-proof/`. Capture age is only receiver-side frame age, **not input-to-photon latency**. The 720×400 firmware workload is not a 1080p game benchmark. A separate earlier 1080p/60 H.264 NVENC throughput check passed; do not combine the two into an unmeasured 1080p streaming claim.
 
-- `bridge/src/capture_feed.*`: independent C++20 frame feed that receives QSM FrameToken, latest-only buffering, validates pixman format and dimensions, copies into Sunshine-compatible top-origin BGRA destination.
-- `Sunshine/src/platform/linux/qemudbusgrab.cpp`: video capture backend implementing Sunshine's `platf::display_t`; reads QEMU D-Bus directly, uses existing encoder abstraction.
-- `Sunshine/src/platform/linux/misc.cpp`: opt-in backend selection `capture=qemu`.
-- `Sunshine/cmake/compile_definitions/linux.cmake`: opt-in `-DSUNSHINE_ENABLE_QEMU_DBUS=ON` and links QSM libraries.
-- `bridge/tests`: independently runnable C++ assertions and a narrow Sunshine API compilation stub. Stubs **do not** replace a production Sunshine build.
+## Architecture
 
-## Reproduce current tests on HPSERVER
+`QEMU CPU scanout → native GLib/GIO Display1 listener → latest-frame buffer → Sunshine capture interface → CUDA conversion/NVENC → existing Moonlight protocol`
+
+The bridge reuses QSM Direct's immutable framebuffer storage and frame mailbox, but uses its own GIO transport to interoperate with QEMU's actual GLib authentication. QSM's fake-service tests alone did not establish interoperability with this QEMU build.
+
+A small private QMP broker passes a **new** Display1 peer socket for each capture initialization. Reusing a consumed D-Bus socket breaks Sunshine's repeated encoder probes. The broker uses standard QMP `getfd`/`add_client` and lets GIO do normal authentication. It does not alter authentication policy.
+
+The Sunshine sidecar must share QEMU's PID namespace (`pid: service:qemu` or `--pid container:...`) and use the same UID. Otherwise the QEMU peer may see PID 0 and reject authentication. Do not replace this with host-wide PID sharing or anonymous authentication.
+
+Video remains CPU-backed. This does not change ReiMS shaders, guest Metal drivers, or implement GPU zero-copy. There is no intermediate Linux desktop/compositor. No host `/dev/uinput` access is required; supported input is routed directly into QEMU.
+
+## Audio boundaries
+
+`GioQemuAudio` receives and validates actual QEMU PCM, including signed/unsigned integer and floating formats. PCM reception and the generated tone are verified. Optional `PulseAudioBridge` forwards it to a **separately supplied private** PulseAudio/PipeWire sink for stock Sunshine capture.
+
+**Audible Moonlight playback and A/V synchronization have not been verified.** The runtime fixture defaults to audio off. Do not enable it without providing a sink and verifying both directions. The synchronous PulseAudio writer still needs shutdown/failure testing against an unresponsive sound server. Microphone return and surround are not acceptance-tested.
+
+## Known limitations / remaining gates
+
+1. **Pairing and playback:** the headless Moonlight client reached pairing, but automated approval was blocked by execution controls. No authentication bypass was added. Approve the test client through Sunshine's normal management UI before asserting a working network stream.
+2. **Live macOS:** untouched by this project; another coordinator owns its runtime. No Compose override or guest restart has been applied. Guest integration needs a controlled, reversible restart after renderer acceptance.
+3. **Input:** keyboard, mouse buttons, vertical wheel and cursor composition are implemented. Held keys/buttons are released on capture detach. QEMU's absolute USB tablet has a bounded fallback for relative desktop movement; this is not validated FPS-game relative-mouse capture. Gamepads, horizontal scrolling and Unicode paste are not implemented.
+4. **Reliability/performance:** resizing triggers capture reinitialization; reconnect tests pass, but sustained Moonlight reconnects, audio drift, long-duration high-motion streaming and client latency remain unmeasured.
+5. **Deployment:** local prototype commits only, no public PR or package publication. The sidecar is not a stock upstream Sunshine image.
+
+## Build and tests
+
+Run from `/home/server/Documents/Projects/Sequoia-Reims-StreamBridge`:
 
 ```sh
+python3 bridge/scripts/build_current.py --configure --target sunshine reims_gio_smoke reims_av_probe reims_gio_lifecycle
 cmake -S bridge -B build-bridge -DCMAKE_BUILD_TYPE=Release
-cmake --build build-bridge -j6
+cmake --build build-bridge --parallel 5
 ctest --test-dir build-bridge --output-on-failure
-cmake -S qsm-rd/qsm-direct -B build-qsm -DQMDP_ENABLE_REAL_QEMU_E2E=OFF -DQMDP_ENABLE_DMABUF_READBACK=OFF
-cmake --build build-qsm -j6
-ctest --test-dir build-qsm -R '^qmdp_' --output-on-failure
+python3 bridge/scripts/package_runtime.py
 ```
 
-## Wiring for a later *approved, reversible* test
+The saved builder uses GCC 14, CUDA 12.8 and the pinned upstream dependency revisions. It builds in a separate container and does not install system packages on HPSERVER. Current web assets must already exist in `build-sunshine/assets/web`; build them from Sunshine's package lock with Node 24 and copy the result there when rebuilding from a fresh checkout. `Dockerfile.build` describes the builder; its GLAD generation also requires Jinja2 (`PYTHONPATH=/src/.python` in the retained build). These are development prerequisites, not a fully self-contained public release.
 
-1. Build the full Sunshine fork with `-DSUNSHINE_ENABLE_QEMU_DBUS=ON`; source is experimental, and complete Sunshine build **has not been performed** on HPSERVER because its full third-party dependencies/toolchain are absent.
-2. Run QEMU with Display1 on a private shared UNIX socket, e.g. `-display dbus,addr=unix:path=/run/reims-display/qemu.sock`. Verify this launch mode against the ReiMS `apple-gfx-pci` CPU framebuffer before affecting the live macOS guest. Some display backends cannot co-exist with VNC; keep a rollback profile.
-3. Give a Sunshine-derived sidecar read/write access to that Unix socket. Set `QEMU_DBUS_ADDRESS=unix:path=/run/reims-display/qemu.sock`, `QEMU_DBUS_DESTINATION=` (empty for peer mode), and Sunshine `capture=qemu`.
-4. Explicitly select the **healthy** host RTX2080Ti NVENC device; do not use the broken eGPU. Enable video-only test first.
-5. Route Moonlight input to QEMU's Display1 keyboard/mouse functions; current Sunshine uses host VirtualHID, **not wired** in this prototype. Do not enable host input forwarding until isolated key/button mapping and releases have been tested.
-6. Expose QEMU USB audio and route to a private PipeWire sink, then Sunshine audio capture with A/V timing. No audio device or PipeWire routing installed here.
-7. Benchmark frame age from QEMU readback through Sunshine encode/transport to client, reconnect, resize, stable FPS. Remote input-to-photon latency unmeasured.
+For the real AV proof, start `sh bridge/scripts/run-qemu-av-fixture.sh` in a separate terminal. Then:
 
-## Known limitations / next technical gates
+```sh
+python3 bridge/scripts/run_av_proof.py
+python3 bridge/scripts/validate_av_artifacts.py
+```
 
-- Full Sunshine compilation/link test required with C++23 build dependencies, CUDA and FFmpeg; the stub compilation validates only the backend's method surface.
-- Input/gamepads and USB audio are not implemented. The existing game streaming protocol is unchanged.
-- The cursor overlay is not implemented (QEMU cursor events exist in QSM).
-- Shared-memory CPU scanout only. No ReiMS Vulkan zero-copy, DMA-BUF GPU scanout integration, or video decoding in guest.
-- Reconnect after a failed D-Bus session requires capture backend reconstruction. No auto-start or running Docker sidecar.
-- QEMU's D-Bus display frame pacing and whether VNC can co-exist with this specific macOS renderer have **not yet been measured**.
-- No production security review of IPC socket permissions, pairing, or network exposure.
+The proof script programs only the disposable fixture's PIT speaker through its private qtest socket. It never accesses the production guest. The validator uses NumPy and FFmpeg, and explicitly selects healthy GPU UUID `GPU-020906b4-0904-3471-e4ee-e41ec2350be3` through NVIDIA CDI. The legacy `--gpus` path can fail because of the already-broken eGPU; no GPU reset is needed.
 
-**Coordination:** All source files reside in `/home/server/Documents/Projects/Sequoia-Reims-StreamBridge`; main ReiMS/Sequoia VM checkout and its Compose, image, QEMU process and guest input are deliberately untouched. The other agent owns live VM runtime.
+## Isolated Compose fixture
 
-### Exact upstream revisions used
-- Sunshine: `7974a409bb82f2e52a45dad901acdd10fd1d61c1` (2026-10-27 upstream master snapshot, GPL-3.0-only)
-- QSM Direct: `eb4b652cab71874c264204e8e4463496ed5d7786` (2026-10-27 snapshot; inspect GPL/AGPL source licenses before external distribution)
-- All code lives on HPSERVER, not a synced/published GitHub PR. No build artifacts or credentials are exposed externally.
+```sh
+python3 bridge/scripts/prepare_fixture.py
+docker compose -f bridge/compose.fixture.yml config
+# Start explicitly only after checking the host ports are free:
+docker compose -f bridge/compose.fixture.yml up -d
+```
+
+This starts a new diskless QEMU fixture and Sunshine sidecar, **not macOS**. Ports bind to host loopback only. Sunshine's first-run setup and pairing remain normal interactive operations. Existing configuration is never overwritten by the preparation script. The file was staged and schema-checked, not automatically applied.
+
+## Future live macOS attachment
+
+Retain the exact working image, disks, guest kexts, CPU/RAM settings and VNC endpoint. Add a private QMP Unix socket and `-display dbus,p2p=yes` during a coordinated restart. Mount that socket directory into the Sunshine service and share only the VM's PID namespace. Match its UID. Enable a D-Bus audiodev and virtual USB sound card separately when testing audio. Keep a configuration rollback and do not combine this change with renderer A/B tests.
+
+## Provenance and licensing
+
+- Sunshine upstream snapshot: `7974a409bb82f2e52a45dad901acdd10fd1d61c1`.
+- QSM Direct snapshot: `eb4b652cab71874c264204e8e4463496ed5d7786`.
+- Both retained source trees provide GPLv3 license texts. Preserve their notices and source availability when distributing derivatives.
+- Runtime images contain no generated pairing/admin credentials; mutable state is supplied through `/config`.

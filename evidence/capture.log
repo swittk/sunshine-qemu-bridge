@@ -1,0 +1,3 @@
+QMP_BROKER_READY socket=/src/bridge/run/av-fixture/broker.sock
+AV_PROBE frames=192 audio_samples=440640 errors=0
+QMP_BROKER_RESULT requests=1 errors=0 child_exit=0

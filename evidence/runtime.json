@@ -1,0 +1,10 @@
+{
+  "image": "sha256:c0b31efaf9c0d88854f7cee74414c70aee7ae686ef1462f6f7f9b82c57237a1d",
+  "bytes": 267725064,
+  "h264_startup": true,
+  "hevc_startup": true,
+  "gamestream_serverinfo": true,
+  "published_ports": {},
+  "macos_guest_attached": false,
+  "paired_playback_verified": false
+}

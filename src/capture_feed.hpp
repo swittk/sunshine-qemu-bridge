@@ -8,6 +8,7 @@
 #include <condition_variable>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <mutex>
 #include <optional>
 #include <span>
@@ -47,6 +48,8 @@ public:
     CaptureFeed(const CaptureFeed&) = delete;
     CaptureFeed& operator=(const CaptureFeed&) = delete;
 
+    using AudioCallback = std::function<void(std::span<const float>,std::uint32_t,std::uint16_t)>;
+    void set_audio_callback(AudioCallback callback); // before start() only
     void start();
     void stop() noexcept;
     std::optional<FrameMetadata> wait_geometry(std::chrono::milliseconds timeout);
@@ -68,6 +71,7 @@ private:
     std::condition_variable state_cv_;
     std::optional<FrameMetadata> latest_geometry_;
     std::string latest_error_;
+    AudioCallback audio_callback_;
 };
 
 } // namespace reims_stream

@@ -1,0 +1,6 @@
+*
+!dist/
+!dist/**
+!scripts/
+!scripts/qmp_attach.py
+!scripts/qmp_broker.py

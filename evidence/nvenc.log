@@ -1,0 +1,17 @@
+[in#0/rawvideo @ 0x5aa1ca0e9400] Estimating duration from bitrate, this may be inaccurate
+Input #0, rawvideo, from '/src/bridge/run/av-proof/input.nv12':
+  Duration: 00:00:03.20, start: 0.000000, bitrate: 207360 kb/s
+  Stream #0:0: Video: rawvideo (NV12 / 0x3231564E), nv12, 720x400, 207360 kb/s, 60 tbr, 60 tbn
+Stream mapping:
+  Stream #0:0 -> #0:0 (rawvideo (native) -> h264 (h264_nvenc))
+Press [q] to stop, [?] for help
+Output #0, h264, to '/src/bridge/run/av-proof/nvenc.h264':
+  Metadata:
+    encoder         : Lavf63.1.102
+  Stream #0:0: Video: h264 (High), nv12(tv, progressive), 720x400, q=2-31, 8000 kb/s, 60 fps, 60 tbn
+    Metadata:
+      encoder         : Lavc63.1.102 h264_nvenc
+    Side data:
+      CPB properties: bitrate max/min/avg: 0/0/8000000 buffer size: 16000000 vbv_delay: N/A
+[out#0/h264 @ 0x5aa1ca0f4080] video:253KiB audio:0KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 0.000000%
+frame=  192 fps=0.0 q=5.0 Lsize=     253KiB time=00:00:03.20 bitrate= 646.8kbits/s speed=7.98x elapsed=0:00:00.40    

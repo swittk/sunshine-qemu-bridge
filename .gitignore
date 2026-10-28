@@ -1,0 +1,4 @@
+/run/
+/dist/
+__pycache__/
+*.pyc

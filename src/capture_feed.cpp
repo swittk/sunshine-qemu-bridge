@@ -1,4 +1,5 @@
 #include "capture_feed.hpp"
+#include "cursor_blend.hpp"
 #include "core/pixel_format.hpp"
 
 #include <algorithm>
@@ -18,7 +19,7 @@ bool write_bgra(const qmdp::FrameToken& frame, std::span<std::uint8_t> dst) {
     const auto width = static_cast<std::size_t>(surface.width);
     const auto height = static_cast<std::size_t>(surface.height);
     const auto stride = static_cast<std::size_t>(pixels.stride);
-    if (width > 16384 || height > 16384 ||
+    if (width == 0 || height == 0 || width > 16384 || height > 16384 ||
         width > std::numeric_limits<std::size_t>::max() / 4U ||
         height > std::numeric_limits<std::size_t>::max() / (width * 4U)) {
         return false;
@@ -72,6 +73,10 @@ bool write_bgra(const qmdp::FrameToken& frame, std::span<std::uint8_t> dst) {
 
 CaptureFeed::CaptureFeed(qmdp::IQemuDisplay& source): source_(source) {}
 CaptureFeed::~CaptureFeed() { stop(); }
+void CaptureFeed::set_audio_callback(AudioCallback callback) {
+  if (running_) throw std::logic_error("set audio callback before start");
+  audio_callback_=std::move(callback);
+}
 
 void CaptureFeed::start() {
     if (running_.exchange(true)) {
@@ -92,6 +97,9 @@ void CaptureFeed::start() {
             state_cv_.notify_all();
             (void) frames_.publish(std::move(frame));
         };
+        callbacks.on_audio = [this](std::span<const float> samples,std::uint32_t rate,std::uint16_t channels){
+            if(running_ && audio_callback_) audio_callback_(samples,rate,channels);
+        };
         callbacks.on_error = [this](std::string error) {
             {
                 std::lock_guard lock(state_mutex_);
@@ -103,6 +111,9 @@ void CaptureFeed::start() {
         source_.start(std::move(callbacks));
     } catch (...) {
         running_ = false;
+        source_.stop();
+        frames_.close();
+        state_cv_.notify_all();
         throw;
     }
 }
@@ -146,6 +157,7 @@ CaptureStatus CaptureFeed::next_bgra(
         conversion_errors_.fetch_add(1, std::memory_order_relaxed);
         return CaptureStatus::error;
     }
+    blend_cursor_bgra(frame->cursor,destination,output.width,output.height);
     return CaptureStatus::frame;
 }
 

@@ -1,0 +1,15 @@
+FROM ubuntu:24.04
+LABEL io.solublelabs.reims.experimental="true"
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 ca-certificates curl \
+    libcurl4t64 libminiupnpc17 libssl3t64 \
+    libpulse0 libdrm2 libcap2 libevdev2 \
+    libglib2.0-0t64 libxtst6 libx11-6 libnuma1 libva2 \
+    libavahi-client3 libavahi-common3 && \
+    rm -rf /var/lib/apt/lists/*
+COPY dist/sunshine /usr/local/bin/sunshine
+COPY dist/assets/ /usr/local/assets/
+COPY scripts/qmp_attach.py scripts/qmp_broker.py /opt/reims-stream/
+WORKDIR /opt/reims-stream
+ENTRYPOINT ["python3","/opt/reims-stream/qmp_broker.py"]

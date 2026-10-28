@@ -1,0 +1,64 @@
+name: reims-streambridge-fixture
+services:
+  qemu:
+    image: sequoia-reims-metal-profile:local
+    container_name: reims-compose-fixture
+    user: "1000:1000"
+    network_mode: none
+    entrypoint: [qemu-system-x86_64]
+    command:
+      - -machine
+      - q35,accel=tcg
+      - -m
+      - 128M
+      - -smp
+      - "1"
+      - -L
+      - /usr/share/seabios
+      - -vga
+      - std
+      - -display
+      - vnc=:9
+      - -display
+      - dbus,p2p=yes
+      - -qmp
+      - unix:/fixture/qmp.sock,server=on,wait=off
+    volumes:
+      - ./run/compose-ipc:/fixture
+      - ./run/compose-passwd:/etc/passwd:ro
+    restart: "no"
+    stop_grace_period: 5s
+  sunshine:
+    image: reims-sunshine-sidecar:local
+    container_name: reims-compose-sunshine
+    depends_on: [qemu]
+    pid: service:qemu
+    user: "1000:1000"
+    devices:
+      - nvidia.com/gpu=${REIMS_GPU_UUID:-GPU-020906b4-0904-3471-e4ee-e41ec2350be3}
+    environment:
+      HOME: /config
+      NVIDIA_DRIVER_CAPABILITIES: video,compute,utility
+      REIMS_ENABLE_AUDIO: "0"
+    command:
+      - --qmp
+      - /run/streambridge/qmp.sock
+      - --socket
+      - /config/broker.sock
+      - --exec
+      - /usr/local/bin/sunshine
+      - /config/sunshine.conf
+    volumes:
+      - ./run/compose-ipc:/run/streambridge
+      - ./run/compose-config:/config
+    # Only host-loopback; LAN/Internet exposure is intentionally not enabled.
+    ports:
+      - 127.0.0.1:47990:47990/tcp
+      - 127.0.0.1:47989:47989/tcp
+      - 127.0.0.1:47984:47984/tcp
+      - 127.0.0.1:48010:48010/tcp
+      - 127.0.0.1:47998:47998/udp
+      - 127.0.0.1:47999:47999/udp
+      - 127.0.0.1:48000:48000/udp
+    restart: "no"
+    stop_grace_period: 10s
