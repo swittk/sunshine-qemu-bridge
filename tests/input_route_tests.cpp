@@ -1,6 +1,7 @@
 #undef NDEBUG
 #include <cassert>
 #include "input_route.hpp"
+#include "relative_pointer_target.hpp"
 #include <cstdint>
 #include <cstdio>
 #include <utility>
@@ -24,6 +25,19 @@ public:
  void relative_pointer(std::int32_t x,std::int32_t y) override {rel.emplace_back(x,y);}
 };
 int main() {
+ reims_stream::RelativePointerTarget pointer;
+ pointer.reported(900,500);
+ for(int i=0;i<4000;++i) {
+   const auto [x,y]=pointer.relative(0,i%2?-12:12,1920,1080);
+   assert(x==900 && y==(i%2?500U:512U));
+   pointer.reported(static_cast<int>(x)-1,static_cast<int>(y)-1);
+ }
+ assert(pointer.absolute(1200,800,1920,1080)==std::make_pair(1200U,800U));
+ pointer.reported(1199,799);
+ assert(pointer.relative(0,-50,1920,1080)==std::make_pair(1200U,750U));
+ assert(pointer.relative(INT32_MAX,INT32_MIN,1920,1080)==std::make_pair(1919U,0U));
+ reims_stream::RelativePointerTarget unknown;
+ assert(unknown.relative(0,12,1920,1080)==std::make_pair(960U,552U));
  using reims_stream::InputRoute;
  auto &r=InputRoute::instance();
  assert(!r.connected());

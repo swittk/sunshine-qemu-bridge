@@ -269,8 +269,7 @@ void GioQemuDisplay::handle(const char *iface,const char *method,
          g_variant_unref(arr);
        } else if(!std::strcmp(iface,listener_iface)&&!std::strcmp(method,"MouseSet")) {
           gint32 x,y,on;g_variant_get(params,"(iii)",&x,&y,&on);
-          pointer_x_=x;
-          pointer_y_=y;
+          pointer_target_.reported(x,y);
           framebuffer_.set_cursor_position(x,y,on!=0);
           if(callbacks_.on_cursor) callbacks_.on_cursor(framebuffer_.cursor_state());
           repaint_cursor();
@@ -379,25 +378,16 @@ void GioQemuDisplay::button(std::uint8_t b,bool down) {
 }
 bool GioQemuDisplay::is_absolute_pointer() {return mouse_absolute_.load();}
 void GioQemuDisplay::absolute_pointer(std::uint32_t x,std::uint32_t y) {
-    const auto xmax=width_.load()?width_.load()-1U:0U;
-    const auto ymax=height_.load()?height_.load()-1U:0U;
-    x=std::min(x,xmax);y=std::min(y,ymax);
-    pointer_x_=static_cast<std::int32_t>(x);
-    pointer_y_=static_cast<std::int32_t>(y);
+    auto [px,py]=pointer_target_.absolute(x,y,width_.load(),height_.load());
     if(!mouse_absolute_)return;
-    send_no_reply("org.qemu.Display1.Mouse","SetAbsPosition",g_variant_new("(uu)",x,y));
+    send_no_reply("org.qemu.Display1.Mouse","SetAbsPosition",g_variant_new("(uu)",px,py));
 }
 void GioQemuDisplay::relative_pointer(std::int32_t x,std::int32_t y) {
     if(mouse_absolute_) {
-       // QEMU's usb-tablet device rejects RelMotion. Move its absolute
-       // pointer by the requested delta to retain desktop functionality.
-       const auto boundx=width_.load()?width_.load()-1U:0U;
-       const auto boundy=height_.load()?height_.load()-1U:0U;
-       auto px=std::clamp<std::int64_t>(
-          static_cast<std::int64_t>(pointer_x_.load())+x,0,boundx);
-       auto py=std::clamp<std::int64_t>(
-          static_cast<std::int64_t>(pointer_y_.load())+y,0,boundy);
-       absolute_pointer(static_cast<std::uint32_t>(px),static_cast<std::uint32_t>(py));
+       // QEMU's USB tablet has no RelMotion; integrate against *requested*
+       // coordinates. Guest cursor feedback may be delayed or rounded down.
+       auto [px,py]=pointer_target_.relative(x,y,width_.load(),height_.load());
+       send_no_reply("org.qemu.Display1.Mouse","SetAbsPosition",g_variant_new("(uu)",px,py));
        return;
     }
     send_no_reply("org.qemu.Display1.Mouse","RelMotion",g_variant_new("(ii)",x,y));

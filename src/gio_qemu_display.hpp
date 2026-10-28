@@ -1,6 +1,7 @@
 #pragma once
 #include "capture/cpu_framebuffer.hpp"
 #include "gio_qemu_audio.hpp"
+#include "relative_pointer_target.hpp"
 #include "interfaces/qemu_display.hpp"
 #include <gio/gio.h>
 #include <gio/gunixfdlist.h>
@@ -65,7 +66,7 @@ private:
     std::atomic<bool> running_{false};
     std::atomic<std::uint64_t> frames_{0};
     std::atomic<bool> mouse_absolute_{true};
-    std::atomic<std::int32_t> pointer_x_{0},pointer_y_{0};
+    RelativePointerTarget pointer_target_;
     std::atomic<std::uint32_t> width_{1920},height_{1080};
 };
 } // namespace reims_stream
