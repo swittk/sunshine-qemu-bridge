@@ -1,6 +1,6 @@
 # QEMU Display1 → Sunshine adapter
 
-Experimental, isolated HPSERVER project. **Paired Moonlight network video, decoded test-tone audio and keyboard delivery to a disposable guest are validated. Live macOS and physical-display latency are not yet validated here.**
+Experimental public source project; validated in an isolated QEMU fixture, not a production macOS VM. **Paired Moonlight network video, decoded test-tone audio and keyboard delivery to a disposable guest are validated. Live macOS and physical-display latency are not yet validated here.**
 
 ## Earlier local checks — 2026-10-28
 
@@ -41,11 +41,11 @@ Video remains CPU-backed. This does not change ReiMS shaders, guest Metal driver
 2. **Live macOS:** untouched by this project; another coordinator owns its runtime. No Compose override or guest restart has been applied. Guest integration needs a controlled, reversible restart after renderer acceptance.
 3. **Input:** keyboard, mouse buttons, vertical wheel and cursor composition are implemented. Held keys/buttons are released on capture detach. QEMU's absolute USB tablet has a bounded fallback for relative desktop movement; this is not validated FPS-game relative-mouse capture. Gamepads, horizontal scrolling and Unicode paste are not implemented.
 4. **Reliability/performance:** resizing triggers capture reinitialization; reconnect tests pass, but sustained Moonlight reconnects, audio drift, long-duration high-motion streaming and client latency remain unmeasured.
-5. **Deployment:** local prototype commits only, no public PR or package publication. The sidecar is not a stock upstream Sunshine image.
+5. **Deployment:** public source available; no upstream PR or prebuilt package release. The sidecar is not a stock upstream Sunshine image.
 
 ## Build and tests
 
-Run from `/home/server/Documents/Projects/Sequoia-Reims-StreamBridge`:
+Run from the parent directory containing sibling `bridge/`, `Sunshine/`, and `qsm-rd/` checkouts:
 
 ```sh
 python3 bridge/scripts/build_current.py --configure --target sunshine reims_gio_smoke reims_av_probe reims_gio_lifecycle reims_audio_forwarder
@@ -95,3 +95,20 @@ A separate repeated Moonlight input test advanced the SeaBIOS keyboard-buffer ta
 ## Tested full-AV topology
 Use `compose.audio-fixture.yml`: a private Unix D-Bus message bus in QEMU, one persistent `reims_audio_forwarder`, an isolated PulseAudio null sink, and Sunshine with `REIMS_ENABLE_AUDIO=0` (video capture does not own audio). `QEMU_DBUS_DESTINATION=org.qemu`; the services share QEMU's PID namespace and UID. The original QMP/p2p route remains a video-only option, not the full-AV acceptance path.
 Run `decode_moonlight_audio.py` then `save_network_evidence.py` against captures from the paired, instrumented Moonlight client. `verify_network_input.py` requires the named, diskless fixture and the prepared bounded input-test client. `ReimsEvidence.h` in that test-only client writes received packets for offline decoding; it does not alter Sunshine's protocol or pairing policy.
+
+## Public source checkout
+
+The [Sunshine fork](https://github.com/swittk/Sunshine/tree/feat/qemu-dbus-capture-prototype) and this [QEMU bridge](https://github.com/swittk/sunshine-qemu-bridge) are separate GPLv3 repositories. The bridge also uses [QSM Direct](https://github.com/rdmitry0911/qsm-rd).
+
+Clone these **as siblings** in one directory (the build scripts expect this layout):
+
+```bash
+git clone --branch feat/qemu-dbus-capture-prototype https://github.com/swittk/Sunshine.git Sunshine
+git -C Sunshine submodule update --init --recursive
+git clone https://github.com/rdmitry0911/qsm-rd.git qsm-rd
+git -C qsm-rd checkout eb4b652cab71874c264204e8e4463496ed5d7786
+git clone https://github.com/swittk/sunshine-qemu-bridge.git bridge
+docker build -f bridge/Dockerfile.build -t reims-sunshine-builder:local bridge
+```
+
+Build details, web-asset prerequisites, tests and the isolated Compose fixture are documented above. This is source code, not a published binary release. Never expose a guest's QMP socket or the Sunshine management UI without access controls.
